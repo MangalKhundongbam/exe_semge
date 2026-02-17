@@ -1,0 +1,29 @@
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: docusearch:latest
+    container_name: docusearch
+    ports:
+      - "8000:8000"
+    volumes:
+      # Persistent data storage
+      - ./uploads:/app/uploads
+      - ./ocr_results.json:/app/ocr_results.json
+      - ./users.json:/app/users.json
+    environment:
+      # Override these in production
+      - SECRET_KEY=your-secret-key-change-in-production
+      - ACCESS_TOKEN_EXPIRE_MINUTES=30
+      - REFRESH_TOKEN_EXPIRE_DAYS=7
+      # Tesseract OCR configuration
+      # - TESSDATA_PREFIX=/usr/share/tesseract-ocr/5/tessdata
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8000/')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s

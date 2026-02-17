@@ -1,0 +1,15 @@
+fastapi
+uvicorn
+python-multipart
+pdf2image
+Pillow
+pytesseract
+tinydb
+PyMuPDF
+python-jose[cryptography]
+passlib[bcrypt]
+python-docx
+sqlalchemy
+fuzzywuzzy
+jinja2
+aiofiles

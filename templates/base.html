@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}DocuSearch{% endblock %}</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#667EEA',
+                        accent: '#805AD5',
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+    </style>
+    {% block head %}{% endblock %}
+</head>
+
+<body class="min-h-screen bg-gray-50 text-gray-900 flex flex-col">
+    {% block content %}{% endblock %}
+
+    <footer class="w-full max-w-4xl mx-auto mt-12 mb-4 text-center text-sm text-gray-500">
+        <p>&copy; 2026 DocuSearch. All rights reserved. (Demo Version)</p>
+    </footer>
+
+    <script>
+        // Common Auth Logic
+        const accessToken = localStorage.getItem('access_token');
+        const refreshToken = localStorage.getItem('refresh_token');
+
+        async function authenticatedFetch(url, options = {}) {
+            let token = localStorage.getItem('access_token');
+            if (!token) {
+                window.location.href = '/login';
+                return;
+            }
+
+            options.headers = {
+                ...options.headers,
+                'Authorization': `Bearer ${token}`
+            };
+
+            let response = await fetch(url, options);
+
+            if (response.status === 401) {
+                // Try refreshing token
+                const refresh = localStorage.getItem('refresh_token');
+                if (refresh) {
+                    const refreshFormData = new FormData();
+                    refreshFormData.append('refresh_token', refresh);
+
+                    const refreshRes = await fetch('/refresh/', {
+                        method: 'POST',
+                        body: refreshFormData
+                    });
+
+                    if (refreshRes.ok) {
+                        const data = await refreshRes.json();
+                        localStorage.setItem('access_token', data.access_token);
+                        options.headers['Authorization'] = `Bearer ${data.access_token}`;
+                        response = await fetch(url, options);
+                    } else {
+                        logout();
+                    }
+                } else {
+                    logout();
+                }
+            }
+            return response;
+        }
+
+        function logout() {
+            localStorage.removeItem('access_token');
+            localStorage.removeItem('refresh_token');
+            window.location.href = '/login';
+        }
+    </script>
+    {% block scripts %}{% endblock %}
+</body>
+
+</html>

@@ -1,0 +1,591 @@
+{% extends "base.html" %}
+
+{% block title %}DocuSearch{% endblock %}
+
+{% block content %}
+<div class="flex-grow flex flex-col p-4 md:p-8 items-center">
+    <header class="w-full max-w-6xl mb-6 sm:mb-8">
+        <div class="flex flex-col md:flex-row justify-between items-center mb-4 sm:mb-6 space-y-3 md:space-y-0">
+            <div class="flex items-center text-base sm:text-3xl font-bold text-gray-900">
+                <a href="/dashboard" class="flex flex-row items-center">
+                    <i class="fas fa-book-open text-black mr-1 sm:mr-3 text-base sm:text-2xl" aria-hidden="true"></i>
+                    <h1>DocuSearch</h1>
+                </a>
+            </div>
+            <div class="flex flex-wrap items-center justify-center gap-1 sm:gap-3">
+                <select id="langSelect"
+                    class="bg-white border border-gray-400 text-gray-800 font-semibold py-1 sm:py-2 px-1.5 sm:px-3 rounded shadow focus:outline-none focus:shadow-outline text-[10px] sm:text-base">
+                    <option value="eng+beng">English + Bengali</option>
+                    <option value="eng" selected>English</option>
+                    <option value="ben">Bengali</option>
+                    <option value="mni">Manipuri</option>
+                </select>
+                <button onclick="triggerFileUpload()" id="uploadBtn"
+                    class="bg-black hover:bg-gray-800 text-white font-semibold py-1 sm:py-2 px-1.5 sm:px-4 rounded-md shadow inline-flex items-center transition-all text-[10px] sm:text-base">
+                    <i class="fas fa-cloud-upload-alt mr-0 sm:mr-2 text-xs sm:text-base"></i> <span
+                        class="hidden sm:inline">Upload
+                        Document</span><span class="sm:hidden">Upload</span>
+                </button>
+                <input type="file" id="fileInput" class="hidden" accept=".pdf" onchange="handleFileUpload(event)">
+                <button onclick="logout()" class="text-gray-500 hover:text-gray-900 p-2">
+                    <i class="fas fa-sign-out-alt fa-lg"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Search Bar -->
+        <div class="relative w-full">
+            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <i class="fas fa-search text-gray-400"></i>
+            </div>
+            <input type="text" id="searchInput"
+                class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 text-xs sm:text-lg"
+                placeholder="Search documents...">
+        </div>
+    </header>
+
+    <main class="w-full max-w-6xl flex-grow">
+        <!-- Results View -->
+        <div id="resultsView" class="space-y-6">
+            <div id="resultsList" class="grid gap-6">
+                <!-- Results will be injected here -->
+            </div>
+            <div id="noResults" class="hidden text-center text-gray-500 mt-10">
+                <p>No results found.</p>
+            </div>
+            <div id="loadingSearch" class="hidden text-center text-gray-500 mt-10">
+                <i class="fas fa-spinner fa-spin fa-2x"></i>
+                <p class="mt-2">Searching...</p>
+            </div>
+            <div id="initialState" class="hidden text-center text-gray-500 mt-20">
+                <i class="fas fa-search fa-4x mb-4 text-gray-300"></i>
+                <p class="text-xl">Enter a search term to find documents.</p>
+            </div>
+        </div>
+
+        <!-- Document Viewer -->
+        <div id="documentView" class="hidden space-y-6">
+            <button onclick="backToResults()"
+                class="bg-white hover:bg-gray-100 text-black font-semibold py-1.5 sm:py-2 px-2 sm:px-4 border-2 border-black rounded-md inline-flex items-center mb-4 transition-all text-xs sm:text-base">
+                <i class="fas fa-arrow-left mr-1 sm:mr-2 text-xs sm:text-base"></i> <span
+                    class="hidden min-[400px]:inline">Back to Search Results</span><span
+                    class="min-[400px]:hidden">Back</span>
+            </button>
+
+            <div class="bg-white rounded-lg shadow-xl overflow-hidden flex flex-col">
+                <div
+                    class="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200 bg-gray-50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                    <h2 id="docTitle"
+                        class="text-base sm:text-xl font-semibold text-gray-800 truncate max-w-full sm:max-w-2xl">
+                        Document Title</h2>
+                    <div class="flex items-center space-x-2">
+                        <button onclick="changePage(-1)" class="p-2 rounded-full hover:bg-gray-200"><i
+                                class="fas fa-chevron-left"></i></button>
+                        <span id="pageIndicator" class="text-xs sm:text-sm font-medium whitespace-nowrap">Page 1</span>
+                        <button onclick="changePage(1)" class="p-2 rounded-full hover:bg-gray-200"><i
+                                class="fas fa-chevron-right"></i></button>
+                    </div>
+                </div>
+
+                <div class="flex-grow overflow-hidden flex flex-col lg:flex-row">
+                    <!-- PDF Image Viewer -->
+                    <div
+                        class="flex-1 min-h-[400px] bg-gray-100 p-2 sm:p-4 overflow-y-auto flex justify-center items-start">
+                        <img id="pdfPageImage" src="" alt="PDF Page" class="shadow-lg max-w-full h-auto object-contain">
+                        <div id="loadingImage"
+                            class="hidden absolute top-1/2 left-1/4 transform -translate-x-1/2 -translate-y-1/2">
+                            <i class="fas fa-spinner fa-spin fa-3x text-indigo-600"></i>
+                        </div>
+                    </div>
+
+                    <!-- Text Editor -->
+                    <div
+                        class="flex-1 min-h-[400px] bg-white border-t lg:border-t-0 lg:border-l border-gray-200 p-3 sm:p-4 flex flex-col">
+                        <label for="pageTextEditor"
+                            class="block text-xs sm:text-sm font-medium text-gray-700 mb-2">Extracted
+                            Text (Editable)</label>
+                        <textarea id="pageTextEditor"
+                            class="flex-grow w-full p-2 sm:p-3 border border-gray-300 rounded-md focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 font-mono text-xs sm:text-sm resize-none"></textarea>
+                        <div
+                            class="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-gray-200 bg-gray-50 px-0 py-3 sm:py-4 flex justify-end">
+                            <button onclick="saveTextChanges()" id="saveBtn"
+                                class="bg-black hover:bg-gray-800 text-white font-bold py-1.5 sm:py-2 px-2 sm:px-4 rounded-md focus:outline-none inline-flex items-center text-xs sm:text-base transition-all">
+                                <i class="fas fa-save mr-1 sm:mr-2 text-xs sm:text-base"></i> <span
+                                    class="hidden min-[400px]:inline">Save Changes</span><span
+                                    class="min-[400px]:hidden">Save</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Upload Overlay -->
+    <div id="uploadOverlay"
+        class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden flex items-center justify-center z-50">
+        <div class="bg-white p-5 rounded-lg shadow-xl flex flex-col items-center">
+            <i class="fas fa-spinner fa-spin fa-3x text-indigo-600 mb-4"></i>
+            <h2 class="text-xl font-bold">Uploading document...</h2>
+            <p class="text-gray-500">Please wait while we process your file.</p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // State
+    let searchResults = [];
+    let selectedDocument = null;
+    let currentPageNumber = null;
+    let searchTerm = '';
+    let debounceTimer;
+    let allDocuments = [];
+    let currentPage = 1;
+    const DOCS_PER_PAGE = 10;
+
+    const RESULTS_VIEW = document.getElementById('resultsView');
+    const DOCUMENT_VIEW = document.getElementById('documentView');
+    const RESULTS_LIST = document.getElementById('resultsList');
+    const NO_RESULTS = document.getElementById('noResults');
+    const LOADING_SEARCH = document.getElementById('loadingSearch');
+    const INITIAL_STATE = document.getElementById('initialState');
+    const SEARCH_INPUT = document.getElementById('searchInput');
+
+    // Debounce function
+    function debounce(func, delay) {
+        return function (...args) {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(() => func.apply(this, args), delay);
+        };
+    }
+
+    // Search
+    SEARCH_INPUT.addEventListener('input', debounce((e) => {
+        const query = e.target.value.trim();
+        if (query) {
+            searchTerm = query;
+            performSearch(query);
+        } else {
+            searchTerm = '';
+            searchResults = [];
+            renderAllDocuments();
+        }
+    }, 500)); // 500ms debounce
+
+    async function performSearch(query) {
+        LOADING_SEARCH.classList.remove('hidden');
+        INITIAL_STATE.classList.add('hidden');
+        NO_RESULTS.classList.add('hidden');
+        RESULTS_LIST.innerHTML = '';
+
+        try {
+            const response = await authenticatedFetch(`/search/?query=${encodeURIComponent(query)}`);
+            if (response.ok) {
+                searchResults = await response.json();
+                renderResults();
+            } else {
+                console.error('Search failed');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+        } finally {
+            LOADING_SEARCH.classList.add('hidden');
+        }
+    }
+
+    function renderResults() {
+        RESULTS_LIST.innerHTML = '';
+        if (searchResults.length === 0 && searchTerm) {
+            NO_RESULTS.classList.remove('hidden');
+            return;
+        }
+
+        NO_RESULTS.classList.add('hidden');
+
+        searchResults.forEach(doc => {
+            const card = document.createElement('div');
+            card.className = 'bg-white rounded-lg p-2 sm:p-6 transition-all duration-300 border-2 border-black hover:shadow-[0_8px_30px_rgb(0,0,0,0.12)] w-full';
+
+            // Preview logic: find the first match
+            const firstMatch = doc.matches[0];
+            let previewText = firstMatch ? firstMatch.text : 'No text preview available';
+
+            // Highlight search term
+            const regex = new RegExp(`(${searchTerm})`, 'gi');
+            previewText = previewText.replace(regex, '<span class="bg-yellow-200 font-semibold">$1</span>');
+
+            card.innerHTML = `
+                <div class="flex flex-col sm:flex-row justify-between items-start gap-3 sm:gap-4">
+                    <div class="flex-grow cursor-pointer" onclick="openDocument({id: '${doc.id}', matches: ${JSON.stringify(doc.matches).replace(/"/g, '&quot;')}, source_file: '${doc.source_file}', page_count: ${doc.page_count}})">
+                        <h3 class="text-sm min-[620px]:text-base md:text-lg font-semibold text-gray-900 mb-1 break-all">${doc.source_file}</h3>
+                        <p class="text-xs min-[620px]:text-sm text-gray-600 mb-1 sm:mb-3">
+                            <i class="far fa-file-pdf mr-1"></i> ${doc.page_count} Pages • 
+                            <span class="font-semibold">${doc.matches.length} matches found</span>
+                        </p>
+                    </div>
+                    <div class="flex gap-1 sm:gap-3 self-end sm:self-start">
+                        <button onclick="event.stopPropagation(); downloadDocument('${doc.id}', '${doc.source_file}')" 
+                            class="bg-black hover:bg-gray-800 text-white px-1.5 sm:px-4 py-1 sm:py-2 rounded-md text-[10px] sm:text-sm inline-flex items-center gap-1 sm:gap-2 transition-all duration-200" 
+                            title="Download PDF">
+                            <i class="fas fa-download text-[10px] sm:text-sm"></i>
+                            <span class="hidden sm:inline">Download</span>
+                        </button>
+                        <button onclick="event.stopPropagation(); deleteDocument('${doc.id}')" 
+                            class="bg-white hover:bg-gray-100 text-black px-1.5 sm:px-4 py-1 sm:py-2 rounded-md text-[10px] sm:text-sm inline-flex items-center gap-1 sm:gap-2 transition-all duration-200 border-2 border-black" 
+                            title="Delete Document">
+                            <i class="fas fa-trash text-[10px] sm:text-sm"></i>
+                            <span class="hidden sm:inline">Delete</span>
+                        </button>
+                    </div>
+                </div>
+                <div class="bg-gray-50 p-3 sm:p-4 rounded-md text-xs sm:text-sm text-gray-700 font-mono overflow-hidden max-h-24 cursor-pointer border border-gray-300 mt-3" onclick="openDocument({id: '${doc.id}', matches: ${JSON.stringify(doc.matches).replace(/"/g, '&quot;')}, source_file: '${doc.source_file}', page_count: ${doc.page_count}})">
+                    ...${previewText.substring(0, 300)}...
+                </div>
+            `;
+
+            RESULTS_LIST.appendChild(card);
+        });
+    }
+
+    // Fetch all documents on page load
+    async function fetchAllDocuments() {
+        try {
+            const response = await authenticatedFetch('/documents/');
+            if (response.ok) {
+                allDocuments = await response.json();
+                renderAllDocuments();
+            } else {
+                console.error('Failed to fetch documents');
+            }
+        } catch (error) {
+            console.error('Error fetching documents:', error);
+        }
+    }
+
+    // Render all documents (paginated)
+    function renderAllDocuments() {
+        RESULTS_LIST.innerHTML = '';
+        INITIAL_STATE.classList.add('hidden');
+        NO_RESULTS.classList.add('hidden');
+
+        if (allDocuments.length === 0) {
+            INITIAL_STATE.classList.remove('hidden');
+            return;
+        }
+
+        const startIdx = (currentPage - 1) * DOCS_PER_PAGE;
+        const endIdx = startIdx + DOCS_PER_PAGE;
+        const docsToShow = allDocuments.slice(startIdx, endIdx);
+
+        docsToShow.forEach(doc => {
+            const card = document.createElement('div');
+            card.className = 'bg-white rounded-lg p-2 sm:p-6 transition-all duration-300 border-2 border-black hover:shadow-[0_8px_30px_rgb(0,0,0,0.12)] w-full';
+
+            card.innerHTML = `
+                <div class="flex flex-col sm:flex-row justify-between items-start gap-3 sm:gap-4">
+                    <div class="flex-grow cursor-pointer" onclick="openDocumentById('${doc.id}')">
+                        <h3 class="text-sm min-[620px]:text-base md:text-lg font-semibold text-gray-900 mb-1 break-all">${doc.source_file}</h3>
+                        <p class="text-xs min-[620px]:text-sm text-gray-600">
+                            <i class="far fa-file-pdf mr-1"></i> ${doc.page_count} Pages
+                        </p>
+                    </div>
+                    <div class="flex gap-1 sm:gap-3 sm:self-start">
+                        <button onclick="event.stopPropagation(); downloadDocument('${doc.id}', '${doc.source_file}')" 
+                            class="bg-black hover:bg-gray-800 text-white px-1.5 sm:px-4 py-1 sm:py-2 rounded-md text-[10px] sm:text-sm inline-flex items-center gap-1 sm:gap-2 transition-all duration-200" 
+                            title="Download PDF">
+                            <i class="fas fa-download text-[10px] sm:text-sm"></i>
+                            <span class="hidden sm:inline">Download</span>
+                        </button>
+                        <button onclick="event.stopPropagation(); deleteDocument('${doc.id}')" 
+                            class="bg-white hover:bg-gray-100 text-black px-1.5 sm:px-4 py-1 sm:py-2 rounded-md text-[10px] sm:text-sm inline-flex items-center gap-1 sm:gap-2 transition-all duration-200 border-2 border-black" 
+                            title="Delete Document">
+                            <i class="fas fa-trash text-[10px] sm:text-sm"></i>
+                            <span class="hidden sm:inline">Delete</span>
+                        </button>
+                    </div>
+                </div>
+            `;
+
+            RESULTS_LIST.appendChild(card);
+        });
+    }
+
+    // Open document by ID (for all documents view)
+    async function openDocumentById(docId) {
+        RESULTS_VIEW.classList.add('hidden');
+        DOCUMENT_VIEW.classList.remove('hidden');
+
+        try {
+            const response = await authenticatedFetch(`/document/${docId}`);
+            if (response.ok) {
+                const fullDoc = await response.json();
+
+                selectedDocument = {
+                    ...fullDoc,
+                    pages: fullDoc.pages.reduce((acc, page) => {
+                        acc[page.page_number] = page;
+                        return acc;
+                    }, {})
+                };
+
+                document.getElementById('docTitle').innerText = selectedDocument.source_file;
+                loadPage(1);
+            } else {
+                alert('Failed to load document details.');
+                backToResults();
+            }
+        } catch (error) {
+            console.error('Error loading document:', error);
+            backToResults();
+        }
+    }
+
+    async function openDocument(docStub) {
+        // Switch views
+        RESULTS_VIEW.classList.add('hidden');
+        DOCUMENT_VIEW.classList.remove('hidden');
+
+        try {
+            // Fetch full document details
+            const response = await authenticatedFetch(`/document/${docStub.id}`);
+            if (response.ok) {
+                const fullDoc = await response.json();
+
+                // Transform to match frontend structure better if needed, or just use as is
+                selectedDocument = {
+                    ...fullDoc,
+                    // Map OCR results directly
+                    pages: fullDoc.pages.reduce((acc, page) => {
+                        acc[page.page_number] = page;
+                        return acc;
+                    }, {})
+                };
+
+                document.getElementById('docTitle').innerText = selectedDocument.source_file;
+
+                // Determine initial page (first match or page 1)
+                const initialPage = docStub.matches && docStub.matches.length > 0 ? docStub.matches[0].page_number : 1;
+                loadPage(initialPage);
+            } else {
+                alert('Failed to load document details.');
+                backToResults();
+            }
+
+        } catch (error) {
+            console.error('Error loading document:', error);
+            backToResults();
+        }
+    }
+
+    function backToResults() {
+        DOCUMENT_VIEW.classList.add('hidden');
+        RESULTS_VIEW.classList.remove('hidden');
+        selectedDocument = null;
+        currentPageNumber = null;
+    }
+
+    async function loadPage(pageNumber) {
+        if (!selectedDocument || pageNumber < 1 || pageNumber > selectedDocument.page_count) return;
+
+        currentPageNumber = pageNumber;
+        document.getElementById('pageIndicator').innerText = `Page ${pageNumber} of ${selectedDocument.page_count}`;
+
+        // Load Text
+        const pageData = selectedDocument.pages[pageNumber];
+        const textArea = document.getElementById('pageTextEditor');
+        textArea.value = pageData ? pageData.text : '';
+
+        // Load Image
+        const imgEl = document.getElementById('pdfPageImage');
+        const loadingEl = document.getElementById('loadingImage');
+
+        imgEl.style.opacity = '0.5';
+        loadingEl.classList.remove('hidden');
+
+        try {
+            const response = await authenticatedFetch(`/document/${selectedDocument.id}/page_image/${pageNumber}`);
+            if (response.ok) {
+                const data = await response.json();
+                imgEl.src = `data:image/png;base64,${data.page_image_base64}`;
+            } else {
+                console.error('Failed to load page image');
+            }
+        } catch (error) {
+            console.error('Error loading page image:', error);
+        } finally {
+            imgEl.style.opacity = '1';
+            loadingEl.classList.add('hidden');
+        }
+    }
+
+    function changePage(delta) {
+        if (!selectedDocument) return;
+        const newPage = currentPageNumber + delta;
+        if (newPage >= 1 && newPage <= selectedDocument.page_count) {
+            loadPage(newPage);
+        }
+    }
+
+    async function saveTextChanges() {
+        if (!selectedDocument || !currentPageNumber) return;
+
+        const newText = document.getElementById('pageTextEditor').value;
+        const saveBtn = document.getElementById('saveBtn');
+
+        saveBtn.disabled = true;
+        saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Saving...';
+
+        const formData = new FormData();
+        formData.append('doc_id', selectedDocument.id);
+        formData.append('page_number', currentPageNumber);
+        formData.append('new_text', newText);
+
+        try {
+            const response = await authenticatedFetch('/edit/', {
+                method: 'PUT',
+                body: formData
+            });
+
+            if (response.ok) {
+                // Update local state
+                if (selectedDocument.pages[currentPageNumber]) {
+                    selectedDocument.pages[currentPageNumber].text = newText;
+                }
+                alert('Changes saved successfully!');
+            } else {
+                alert('Failed to save changes.');
+            }
+        } catch (error) {
+            console.error('Error saving:', error);
+            alert('Error saving changes.');
+        } finally {
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = '<i class="fas fa-save mr-2"></i> Save Changes';
+        }
+    }
+
+    // Upload functionality
+    function triggerFileUpload() {
+        document.getElementById('fileInput').click();
+    }
+
+    async function handleFileUpload(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const overlay = document.getElementById('uploadOverlay');
+        overlay.classList.remove('hidden');
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        const lang = document.getElementById('langSelect').value;
+        formData.append('lang', lang);
+
+        try {
+            const response = await authenticatedFetch('/upload/', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                alert(`Upload successful! Document ID: ${data.id}`);
+                // Refresh documents list
+                SEARCH_INPUT.value = '';
+                searchResults = [];
+                searchTerm = '';
+                await fetchAllDocuments();
+            } else {
+                const err = await response.json();
+                alert(`Upload failed: ${err.detail || 'Unknown error'}`);
+            }
+        } catch (error) {
+            console.error('Upload error:', error);
+            alert('An error occurred during upload.');
+        } finally {
+            overlay.classList.add('hidden');
+            document.getElementById('fileInput').value = '';
+        }
+    }
+
+    // Download document
+    async function downloadDocument(docId, filename) {
+        try {
+            const response = await authenticatedFetch(`/document/${docId}`);
+            if (response.ok) {
+                const data = await response.json();
+                if (data.full_pdf_base64) {
+                    // Convert base64 to blob and download
+                    const byteCharacters = atob(data.full_pdf_base64);
+                    const byteNumbers = new Array(byteCharacters.length);
+                    for (let i = 0; i < byteCharacters.length; i++) {
+                        byteNumbers[i] = byteCharacters.charCodeAt(i);
+                    }
+                    const byteArray = new Uint8Array(byteNumbers);
+                    const blob = new Blob([byteArray], { type: 'application/pdf' });
+
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = filename;
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    document.body.removeChild(a);
+                } else {
+                    alert('PDF file not available for download');
+                }
+            } else {
+                alert('Failed to download document');
+            }
+        } catch (error) {
+            console.error('Download error:', error);
+            alert('Error downloading document');
+        }
+    }
+
+    // Delete document
+    async function deleteDocument(docId) {
+        if (!confirm('Are you sure you want to delete this document? This action cannot be undone.')) {
+            return;
+        }
+
+        try {
+            const response = await authenticatedFetch(`/document/${docId}`, {
+                method: 'DELETE'
+            });
+
+            if (response.ok) {
+                alert('Document deleted successfully');
+                // Refresh the view
+                if (searchTerm) {
+                    performSearch(searchTerm);
+                } else {
+                    await fetchAllDocuments();
+                }
+            } else {
+                const err = await response.json();
+                alert(`Failed to delete document: ${err.detail || 'Unknown error'}`);
+            }
+        } catch (error) {
+            console.error('Delete error:', error);
+            alert('Error deleting document');
+        }
+    }
+
+    // Initialize: fetch all documents on page load, check for docId
+    window.addEventListener('DOMContentLoaded', () => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const docId = urlParams.get('docId');
+
+        if (docId) {
+            openDocumentById(docId);
+        }
+
+        fetchAllDocuments();
+    });
+</script>
+{% endblock %}

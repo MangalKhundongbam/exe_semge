@@ -1,0 +1,33 @@
+{
+    "_default": {
+        "1": {
+            "username": "admin",
+            "password": "password"
+        },
+        "2": {
+            "username": "okjimmy@rnd.iitg.ac.in",
+            "password": "9834876dcfb05cb167a5c24953eba58c4ac89b1adf57f28f2f9d09af107ee8f0",
+            "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJva2ppbW15QHJuZC5paXRnLmFjLmluIiwiZXhwIjoxNzQ5MDIzMjE3fQ.6B8Hq0xCBugx73_RcV5Or5G1BMCVawPdfP1cqbNO8Rc"
+        },
+        "3": {
+            "username": "admin@gmail.com",
+            "password": "5e884898da28047151d0e56f8dc6292773603d0d6aabbdd62a11ef721d1542d8",
+            "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG1pbkBnbWFpbC5jb20iLCJleHAiOjE3NTY3MjIwNDZ9.7tLgNfap1ux_MU1ATVyzRg9IeTF_tSNpfoYPuwjKVPU"
+        },
+        "4": {
+            "username": "okjimmy@gmail.com",
+            "password": "5e884898da28047151d0e56f8dc6292773603d0d6aabbdd62a11ef721d1542d8",
+            "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJva2ppbW15QGdtYWlsLmNvbSIsImV4cCI6MTc1NjcxNzE1MX0.MmcG78Y2xCZncn_X8rS5dgENZCYgA55i8f7HsDmVL4U"
+        },
+        "5": {
+            "username": "boysana@gmail.com",
+            "password": "5e884898da28047151d0e56f8dc6292773603d0d6aabbdd62a11ef721d1542d8",
+            "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJib3lzYW5hQGdtYWlsLmNvbSIsImV4cCI6MTc2MjQ1MDQ5Mn0.ZwqcGJDiieG9TAGVicykiZHZYIAOtv9aJ8QztnBWvY8"
+        },
+        "6": {
+            "username": "Admin_ne_eina",
+            "password": "020a0e56b47939d54ecdaaf2e6cc00fd9d4ade1ff87f431a8475112d3955ea1c",
+            "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJBZG1pbl9uZV9laW5hIiwiZXhwIjoxNzcxOTE4OTkwfQ.6UsKtfZVXEs840oSNhfv5NO7fCJbYe_u7iFZppslbgY"
+        }
+    }
+}

@@ -1,0 +1,50 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+.venv
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Development files
+*.log
+*.pot
+*.pyc
+.env
+.env.local
+
+# Database files (will be mounted as volumes)
+*.db
+ocr_results.json
+users.json
+
+# Uploads (will be mounted as volumes)
+uploads/
+
+# Git
+.git/
+.gitignore
+
+# Documentation
+README.md
+*.md
+
+# Debug scripts
+debug_*.py
+
+# PDF test files
+*.pdf
