@@ -3,7 +3,7 @@ name: Build DocuSearch Backend
 on:
   push:
     branches: [ main ]
-  workflow_dispatch:  # Allows manual trigger from GitHub UI
+  workflow_dispatch:
 
 jobs:
 
@@ -27,8 +27,7 @@ jobs:
             tesseract-ocr-hin \
             tesseract-ocr-ben \
             poppler-utils \
-            patchelf \
-            sstrip
+            patchelf
 
       - name: Install Python dependencies
         run: |
@@ -47,7 +46,7 @@ jobs:
             pytesseract \
             pdf2image
 
-      - name: Prepare tessdata
+      - name: Prepare tessdata and static
         run: |
           mkdir -p tessdata
           cp -r /usr/share/tesseract-ocr/5/tessdata/* ./tessdata/
@@ -58,12 +57,10 @@ jobs:
           SITE_PACKAGES=$(python -c "import site; print(site.getsitepackages()[0])")
           find "$SITE_PACKAGES" -type f -name "*.so*" \
             \( -path "*/pymupdf*" -o -path "*/fitz*" -o -path "*/pillow*" -o -path "*/Pillow*" -o -path "*/PIL*" \) \
-            ! -name "*.bak" \
-            -exec cp {} {}.bak \;
+            ! -name "*.bak" -exec cp {} {}.bak \;
           find "$SITE_PACKAGES" -type f -name "*.so*" \
             \( -path "*/pymupdf*" -o -path "*/fitz*" -o -path "*/pillow*" -o -path "*/Pillow*" -o -path "*/PIL*" \) \
-            ! -name "*.bak" \
-            -exec patchelf --remove-rpath {} \;
+            ! -name "*.bak" -exec patchelf --remove-rpath {} \;
 
       - name: Build with PyInstaller
         run: |
@@ -96,8 +93,7 @@ jobs:
             main.py
 
       - name: Bundle with StaticX
-        run: |
-          staticx dist/main dist/DocuSearch_Backend_Linux
+        run: staticx dist/main dist/DocuSearch_Backend_Linux
 
       - name: Upload Linux binary
         uses: actions/upload-artifact@v4
@@ -118,83 +114,77 @@ jobs:
           python-version: '3.12'
 
       - name: Install Python dependencies
-        run: |
-          pip install `
-            pyinstaller `
-            uvicorn `
-            fastapi `
-            starlette `
-            python-multipart `
-            pymupdf `
-            pillow `
-            python-docx `
-            python-jose `
-            tinydb `
-            pytesseract `
-            pdf2image
+        run: pip install pyinstaller uvicorn fastapi starlette python-multipart pymupdf pillow python-docx python-jose tinydb pytesseract pdf2image
 
-      - name: Install Tesseract
+      - name: Install Tesseract and Poppler
         run: |
           choco install tesseract --yes
-          echo "C:\Program Files\Tesseract-OCR" | Out-File -Append -FilePath $env:GITHUB_PATH
-
-      - name: Install Poppler
-        run: |
           choco install poppler --yes
-          # Find and add poppler bin to PATH
-          $popplerBin = Get-ChildItem "C:\ProgramData\chocolatey\lib\poppler" -Recurse -Filter "pdfinfo.exe" | Select-Object -First 1 -ExpandProperty DirectoryName
-          echo $popplerBin | Out-File -Append -FilePath $env:GITHUB_PATH
 
       - name: Prepare tessdata and static
         run: |
-          mkdir -p tessdata
+          New-Item -ItemType Directory -Force -Path tessdata
           $tessdataSource = "C:\Program Files\Tesseract-OCR\tessdata"
           if (Test-Path $tessdataSource) {
-            Copy-Item "$tessdataSource\*" -Destination "tessdata\" -Recurse
+            Copy-Item "$tessdataSource\*" -Destination "tessdata\" -Recurse -Force
           }
           New-Item -ItemType File -Path "static\.keep" -Force
 
-      - name: Find Tesseract and Poppler binaries
-        id: binpaths
-        run: |
-          $tesseract = (Get-Command tesseract).Source
-          $pdftoppm  = (Get-ChildItem "C:\ProgramData\chocolatey\lib\poppler" -Recurse -Filter "pdftoppm.exe"  | Select-Object -First 1).FullName
-          $pdftocairo = (Get-ChildItem "C:\ProgramData\chocolatey\lib\poppler" -Recurse -Filter "pdftocairo.exe" | Select-Object -First 1).FullName
-          $pdfinfo   = (Get-ChildItem "C:\ProgramData\chocolatey\lib\poppler" -Recurse -Filter "pdfinfo.exe"   | Select-Object -First 1).FullName
-          echo "TESSERACT=$tesseract"     | Out-File -Append -FilePath $env:GITHUB_ENV
-          echo "PDFTOPPM=$pdftoppm"       | Out-File -Append -FilePath $env:GITHUB_ENV
-          echo "PDFTOCAIRO=$pdftocairo"   | Out-File -Append -FilePath $env:GITHUB_ENV
-          echo "PDFINFO=$pdfinfo"         | Out-File -Append -FilePath $env:GITHUB_ENV
-
       - name: Build with PyInstaller
+        shell: python
         run: |
-          pyinstaller --onefile `
-            --collect-all uvicorn `
-            --collect-all fastapi `
-            --collect-all starlette `
-            --collect-all docx `
-            --collect-all fitz `
-            --collect-all jose `
-            --collect-all tinydb `
-            --collect-all pdf2image `
-            --hidden-import "uvicorn.logging" `
-            --hidden-import "uvicorn.loops" `
-            --hidden-import "uvicorn.loops.auto" `
-            --hidden-import "uvicorn.protocols" `
-            --hidden-import "uvicorn.protocols.http.auto" `
-            --hidden-import "uvicorn.protocols.websockets.auto" `
-            --hidden-import "uvicorn.lifespan.on" `
-            --hidden-import "uvicorn.lifespan.off" `
-            --hidden-import "multipart" `
-            --hidden-import "python_multipart" `
-            --add-data "templates;templates" `
-            --add-data "static;static" `
-            --add-data "tessdata;tessdata" `
-            --add-binary "$env:TESSERACT;bin" `
-            --add-binary "$env:PDFTOPPM;bin" `
-            --add-binary "$env:PDFTOCAIRO;bin" `
-            --add-binary "$env:PDFINFO;bin" `
-            main.py
+          import subprocess, sys, os, glob
+
+          # Locate tesseract
+          tesseract = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+
+          # Locate poppler binaries
+          poppler_bins = {}
+          for name in ["pdftoppm.exe", "pdftocairo.exe", "pdfinfo.exe"]:
+              matches = glob.glob(r"C:\ProgramData\chocolatey\lib\poppler\**\\" + name, recursive=True)
+              if not matches:
+                  matches = glob.glob(r"C:\tools\poppler\**\\" + name, recursive=True)
+              if matches:
+                  poppler_bins[name] = matches[0]
+              else:
+                  print(f"WARNING: {name} not found")
+
+          cmd = [
+              sys.executable, "-m", "PyInstaller", "--onefile",
+              "--collect-all", "uvicorn",
+              "--collect-all", "fastapi",
+              "--collect-all", "starlette",
+              "--collect-all", "docx",
+              "--collect-all", "fitz",
+              "--collect-all", "jose",
+              "--collect-all", "tinydb",
+              "--collect-all", "pdf2image",
+              "--hidden-import", "uvicorn.logging",
+              "--hidden-import", "uvicorn.loops",
+              "--hidden-import", "uvicorn.loops.auto",
+              "--hidden-import", "uvicorn.protocols",
+              "--hidden-import", "uvicorn.protocols.http.auto",
+              "--hidden-import", "uvicorn.protocols.websockets.auto",
+              "--hidden-import", "uvicorn.lifespan.on",
+              "--hidden-import", "uvicorn.lifespan.off",
+              "--hidden-import", "multipart",
+              "--hidden-import", "python_multipart",
+              "--add-data", "templates;templates",
+              "--add-data", "static;static",
+              "--add-data", "tessdata;tessdata",
+          ]
+
+          if os.path.exists(tesseract):
+              cmd += ["--add-binary", f"{tesseract};bin"]
+
+          for name, path in poppler_bins.items():
+              cmd += ["--add-binary", f"{path};bin"]
+
+          cmd.append("main.py")
+
+          print("Running:", " ".join(cmd))
+          result = subprocess.run(cmd, check=True)
+          sys.exit(result.returncode)
 
       - name: Rename output
         run: Move-Item dist\main.exe dist\DocuSearch_Backend.exe
