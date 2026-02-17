@@ -23,9 +23,6 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y \
             tesseract-ocr \
-            tesseract-ocr-eng \
-            tesseract-ocr-hin \
-            tesseract-ocr-ben \
             poppler-utils \
             patchelf
 
@@ -46,10 +43,10 @@ jobs:
             pytesseract \
             pdf2image
 
-      - name: Prepare tessdata and static
+      - name: Verify tessdata from repo
         run: |
-          mkdir -p tessdata
-          cp -r /usr/share/tesseract-ocr/5/tessdata/* ./tessdata/
+          echo "Using tessdata from repository:"
+          ls -la tessdata/
           touch static/.keep
 
       - name: Patch PyMuPDF and Pillow for StaticX
@@ -121,13 +118,10 @@ jobs:
           choco install tesseract --yes
           choco install poppler --yes
 
-      - name: Prepare tessdata and static
+      - name: Verify tessdata from repo and prepare static
         run: |
-          New-Item -ItemType Directory -Force -Path tessdata
-          $tessdataSource = "C:\Program Files\Tesseract-OCR\tessdata"
-          if (Test-Path $tessdataSource) {
-            Copy-Item "$tessdataSource\*" -Destination "tessdata\" -Recurse -Force
-          }
+          echo "Using tessdata from repository:"
+          Get-ChildItem tessdata\
           New-Item -ItemType File -Path "static\.keep" -Force
 
       - name: Build with PyInstaller
@@ -171,11 +165,14 @@ jobs:
               "--hidden-import", "python_multipart",
               "--add-data", "templates;templates",
               "--add-data", "static;static",
+              # Use tessdata from the repo directly
               "--add-data", "tessdata;tessdata",
           ]
 
           if os.path.exists(tesseract):
               cmd += ["--add-binary", f"{tesseract};bin"]
+          else:
+              print("WARNING: tesseract.exe not found at expected path")
 
           for name, path in poppler_bins.items():
               cmd += ["--add-binary", f"{path};bin"]
