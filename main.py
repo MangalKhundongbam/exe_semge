@@ -539,4 +539,6 @@ async def dashboard_page(request: Request):
 
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    import multiprocessing
+    multiprocessing.freeze_support()  # Required for Windows PyInstaller
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=False)
